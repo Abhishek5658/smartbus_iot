@@ -147,14 +147,31 @@ def my_bus_page():
 
 from flask import request
 
+# ✅ API to receive GPS data and update bus location in memory
+bus_locations = {}
+
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.get_json()
-    print("📡 GPS Data Received:", data)
-    
-    # Optional: Store it to file or database here
+    bus_no = data.get('bus_no')
+    lat = data.get('latitude')
+    lng = data.get('longitude')
 
-    return jsonify({"status": "success", "message": "GPS data received!"})
+    if not bus_no or not lat or not lng:
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+
+    bus_locations[bus_no] = {'latitude': lat, 'longitude': lng}
+    print(f"📍 Updated location for Bus {bus_no}: {lat}, {lng}")
+    return jsonify({'status': 'success'})
+
+# ✅ API to get location of selected bus
+@app.route('/get_bus_location/<bus_no>')
+def get_bus_location(bus_no):
+    location = bus_locations.get(bus_no)
+    if location:
+        return jsonify(location)
+    return jsonify({'latitude': None, 'longitude': None})
+
 
 
 
