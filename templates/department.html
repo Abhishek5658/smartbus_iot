@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Department Panel - Smart Bus Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, button {
+      margin-bottom: 10px;
+      padding: 5px;
+    }
+    #map {
+      height: 400px;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #aaa;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+    .delete-btn {
+      background-color: red;
+      color: white;
+      padding: 5px;
+      border: none;
+      cursor: pointer;
+    }
+
+  .view-btn {
+    background-color: #2196F3; /* Blue */
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    cursor: pointer;
+    margin-right: 5px;
+    border-radius: 4px;
+  }
+
+  .view-btn:hover {
+    background-color: #1976D2;
+  }
+
+  .delete-btn {
+    background-color: red;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+
+  .delete-btn:hover {
+    background-color: darkred;
+  }
+
+
+  </style>
+</head>
+<body>
+  <h2>🔐 Department Control Panel</h2>
+
+  <label for="route_no">Route Number:</label>
+  <input type="text" id="route_no" placeholder="Enter Route No" />
+
+  <button onclick="startDrawing()">➕ Start Drawing Route</button>
+  <button onclick="submitRoute()">✅ Submit Route</button>
+
+  <div id="map"></div>
+
+  <label for="bus_no">Bus Number:</label>
+  <input type="text" id="bus_no" placeholder="Enter Bus No" />
+  <button onclick="submitBus()">🚌 Add Bus to Route</button>
+
+  <h3>📋 All Routes</h3>
+  <table id="routes_table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Route No</th>
+        <th>Stops</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>🗂 All Buses</h3>
+  <table id="buses_table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Bus No</th>
+        <th>Route No</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    let map = L.map('map').setView([0, 0], 13);
+    let routePoints = [];
+    let polyline = null;
+
+    // 🧭 Center map on user location
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      map.setView([lat, lng], 15);
+      L.marker([lat, lng]).addTo(map).bindPopup("📍 Your Location").openPopup();
+    }, () => {
+      alert("⚠️ Could not get your location.");
+      map.setView([12.9716, 77.5946], 13); // fallback to Bangalore
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    function startDrawing() {
+      routePoints = [];
+      if (polyline) {
+        map.removeLayer(polyline);
+      }
+      alert("Click on the map to add stops (start → via → end).");
+    }
+
+    map.on("click", function (e) {
+      const stopName = prompt("Enter stop name:");
+      if (!stopName) return;
+
+      const stop = {
+        name: stopName,
+        lat: e.latlng.lat,
+        lng: e.latlng.lng
+      };
+
+      routePoints.push(stop);
+
+      // Add marker with label
+      L.marker([stop.lat, stop.lng])
+        .addTo(map)
+        .bindPopup(stop.name)
+        .openPopup();
+
+      // Draw route line
+      if (polyline) map.removeLayer(polyline);
+      const coords = routePoints.map(s => [s.lat, s.lng]);
+      polyline = L.polyline(coords, { color: 'blue' }).addTo(map);
+    });
+
+    function submitRoute() {
+      const route_no = document.getElementById("route_no").value.trim();
+      if (!route_no || routePoints.length < 2) {
+        alert("Enter Route No and select at least 2 stops.");
+        return;
+      }
+
+      fetch('/add_route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ route_no, path: JSON.stringify(routePoints) })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        routePoints = []; // 🧹 Clear route points
+        loadRoutes();      // 🔄 Refresh the table
+        document.getElementById("route_no").value = ""; // Clear input
+        if (polyline) {
+          map.removeLayer(polyline);
+          polyline = null;
+        }
+  });
+}
+
+
+  function submitBus() {
+    const bus_no = document.getElementById("bus_no").value.trim();
+    const route_no = document.getElementById("route_no").value.trim();
+    if (!bus_no || !route_no) {
+      alert("❌ Please enter both Bus No and Route No.");
+      return;
+    }
+
+    fetch('/add_bus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bus_no, route_no })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("✅ " + data.message);
+      document.getElementById("bus_no").value = "";  // clear input
+      loadBuses(); // 🟢 force reload the bus list
+    })
+    .catch(err => {
+      alert("❌ Failed to add bus: " + err);
+      console.error(err);
+    });
+  }
+
+
+
+
+
+
+
+    function loadRoutes() {
+      fetch('/get_routes')
+        .then(res => res.json())
+        .then(routes => {
+          const table = document.querySelector("#routes_table tbody");
+          table.innerHTML = '';
+          routes.forEach(route => {
+            let stops = "";
+            try {
+              const parsed = JSON.parse(route.path);
+              stops = parsed.map(s => s.name).join(" ➜ ");
+            } catch (e) {
+              stops = "Invalid format";
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${route.id}</td>
+              <td>${route.route_no}</td>
+              <td>${stops}</td>
+              <td>
+                <button class="view-btn" onclick="viewRoute(${route.id})">View</button>
+                <button class="delete-btn" onclick="deleteRoute(${route.id})">Delete</button>
+              </td>
+
+            `;
+            table.appendChild(tr);
+          });
+        });
+    }
+
+
+
+    function loadBuses() {
+      fetch('/get_buses')
+        .then(res => res.json())
+        .then(buses => {
+          const table = document.querySelector("#buses_table tbody");
+          table.innerHTML = '';
+          buses.forEach(bus => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${bus.id}</td>
+              <td>${bus.bus_no}</td>
+              <td>${bus.route_no}</td>
+              <td><button class="delete-btn" onclick="deleteBus(${bus.id})">Delete</button></td>
+            `;
+            table.appendChild(tr);
+          });
+        });
+    }
+
+
+      function deleteRoute(id) {
+        fetch(`/delete_route/${id}`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(data => {
+            alert(data.message);
+            loadRoutes(); // 🔄 Refresh route table
+          });
+    }
+
+    function deleteBus(id) {
+      fetch(`/delete_bus/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          loadBuses(); // 🔄 Refresh bus table
+        });
+    }
+
+    window.onload = () => {
+      loadRoutes();
+      loadBuses();
+    };
+
+
+    let viewPolyline = null;
+    let viewMarkers = [];
+
+    function viewRoute(id) {
+      fetch('/get_routes')
+        .then(res => res.json())
+        .then(routes => {
+          const route = routes.find(r => r.id === id);
+          if (!route) {
+            alert("Route not found");
+            return;
+          }
+
+          // Remove old line and markers
+          if (viewPolyline) {
+            map.removeLayer(viewPolyline);
+          }
+          viewMarkers.forEach(marker => map.removeLayer(marker));
+          viewMarkers = [];
+
+          try {
+            const stops = JSON.parse(route.path);
+            const latlngs = stops.map(stop => [stop.lat, stop.lng]);
+
+            // Draw route line
+            viewPolyline = L.polyline(latlngs, { color: 'green', weight: 4 }).addTo(map);
+
+            // Add markers
+            stops.forEach(stop => {
+              const marker = L.marker([stop.lat, stop.lng])
+                .addTo(map)
+                .bindPopup(stop.name);
+              viewMarkers.push(marker);
+            });
+
+            // Auto-zoom to route
+            map.fitBounds(viewPolyline.getBounds());
+
+          } catch (e) {
+            alert("Invalid path data");
+          }
+        });
+    }
+
+
+  </script>
+</body>
+</html>

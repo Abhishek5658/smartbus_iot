@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Routes & Available Buses</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    input[type="text"] {
+      padding: 5px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    .select-btn, .view-btn {
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .select-btn {
+      background-color: #04AA6D;
+      color: white;
+    }
+
+    .view-btn {
+      background-color: #2196F3;
+      color: white;
+      margin-right: 5px;
+    }
+
+    .select-btn:hover {
+      background-color: #038e5a;
+    }
+
+    .view-btn:hover {
+      background-color: #1976D2;
+    }
+
+    #map {
+      height: 400px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🚌 Routes & Available Buses</h2>
+
+  <input type="text" id="searchInput" placeholder="Search route or bus..." onkeyup="filterTables()" />
+
+  <h3>📌 Available Routes</h3>
+  <table id="routesTable">
+    <thead>
+      <tr>
+        <th>Route No</th>
+        <th>Stops</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>🚍 Available Buses</h3>
+  <table id="busesTable">
+    <thead>
+      <tr>
+        <th>Bus No</th>
+        <th>Route No</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    let selectedRoute = null;
+    let selectedBus = null;
+
+    let map = L.map('map').setView([12.9716, 77.5946], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'Map data © OpenStreetMap contributors'
+    }).addTo(map);
+
+    let viewPolyline = null;
+    let viewMarkers = [];
+
+    function filterTables() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      ['routesTable', 'busesTable'].forEach(tableId => {
+        const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+        rows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          row.style.display = text.includes(query) ? '' : 'none';
+        });
+      });
+    }
+
+    function selectRoute(routeNo) {
+      selectedRoute = routeNo;
+      localStorage.setItem("selectedRoute", routeNo);
+      checkAndSwitchToMyBus();
+    }
+
+    function selectBus(busNo) {
+      selectedBus = busNo;
+      localStorage.setItem("selectedBus", busNo);
+      checkAndSwitchToMyBus();
+    }
+
+    function checkAndSwitchToMyBus() {
+      if (selectedRoute && selectedBus) {
+        if (window.parent) {
+          window.parent.postMessage({
+            action: "switchTab",
+            routeNo: selectedRoute,
+            busNo: selectedBus
+          }, "*");
+        }
+      }
+    }
+
+    function viewRoute(routeId) {
+      fetch('/get_routes')
+        .then(res => res.json())
+        .then(routes => {
+          const route = routes.find(r => r.id === routeId);
+          if (!route) return;
+
+          if (viewPolyline) {
+            map.removeLayer(viewPolyline);
+            viewPolyline = null;
+          }
+          viewMarkers.forEach(marker => map.removeLayer(marker));
+          viewMarkers = [];
+
+          try {
+            const stops = JSON.parse(route.path);
+            const latlngs = stops.map(stop => [stop.lat, stop.lng]);
+
+            viewPolyline = L.polyline(latlngs, { color: 'green', weight: 4 }).addTo(map);
+
+            stops.forEach(stop => {
+              const marker = L.marker([stop.lat, stop.lng])
+                .addTo(map)
+                .bindPopup(stop.name);
+              viewMarkers.push(marker);
+            });
+
+            map.fitBounds(viewPolyline.getBounds());
+          } catch (e) {
+            alert("Invalid route format");
+          }
+        });
+    }
+
+    function loadRoutes() {
+      fetch('/get_routes')
+        .then(res => res.json())
+        .then(routes => {
+          const table = document.querySelector("#routesTable tbody");
+          table.innerHTML = '';
+          routes.forEach(route => {
+            let stops = "";
+            try {
+              const parsed = JSON.parse(route.path);
+              stops = parsed.map(s => s.name).join(" ➜ ");
+            } catch {
+              stops = "Invalid path";
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${route.route_no}</td>
+              <td>${stops}</td>
+              <td>
+                <button class="view-btn" onclick="viewRoute(${route.id})">View</button>
+                <button class="select-btn" onclick="selectRoute('${route.route_no}')">Select</button>
+              </td>
+            `;
+            table.appendChild(tr);
+          });
+        });
+    }
+
+    function loadBuses() {
+      fetch('/get_buses')
+        .then(res => res.json())
+        .then(buses => {
+          const table = document.querySelector("#busesTable tbody");
+          table.innerHTML = '';
+          buses.forEach(bus => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${bus.bus_no}</td>
+              <td>${bus.route_no}</td>
+              <td><button class="select-btn" onclick="selectBus('${bus.bus_no}')">Select</button></td>
+            `;
+            table.appendChild(tr);
+          });
+        });
+    }
+
+    window.onload = () => {
+      loadRoutes();
+      loadBuses();
+    };
+  </script>
+</body>
+</html>
