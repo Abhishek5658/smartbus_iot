@@ -151,9 +151,6 @@ bus_locations = {}  # keep this at the top globally
 
 import json
 
-# ✅ Store location in memory
-bus_locations = {}
-
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.get_json()
@@ -164,27 +161,35 @@ def update_location():
     if not all([bus_no, latitude, longitude]):
         return jsonify({"status": "error", "message": "Missing data"}), 400
 
-    # ✅ Save location in memory
-    bus_locations[bus_no] = {
-        "latitude": float(latitude),
-        "longitude": float(longitude)
-    }
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)",
+                  (bus_no, float(latitude), float(longitude)))
+        conn.commit()
+        conn.close()
+        print(f"📡 Saved Location for {bus_no}: ({latitude}, {longitude})")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-    print(f"📡 Received Location for {bus_no}: ({latitude}, {longitude})")
-    return jsonify({"status": "success"})
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
-    if bus_no in bus_locations:
-        return jsonify(bus_locations[bus_no])
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT latitude, longitude FROM gps_data 
+        WHERE bus_no = ? 
+        ORDER BY timestamp DESC LIMIT 1
+    ''', (bus_no,))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"latitude": row[0], "longitude": row[1]})
     else:
         return jsonify({"error": "No location found"}), 404
-
-
-
-
-
-
 
 
 
