@@ -2,142 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Bus</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Bus - Live Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
       margin: 0;
-    }
-    h2 {
-      margin-bottom: 10px;
-    }
-    #busInfo {
-      margin-bottom: 15px;
+      padding: 0;
+      font-family: Arial, sans-serif;
     }
 
-    .road-container {
-      position: relative;
-      background: #ddd;
-      height: 60px;
-      margin-bottom: 20px;
-      border-radius: 30px;
+    h2 {
+      margin: 20px;
     }
-    .start-stop, .end-stop {
-      position: absolute;
-      top: 18px;
-      font-weight: bold;
-    }
-    .start-stop { left: 10px; }
-    .end-stop { right: 10px; }
-    .bus-icon {
-      position: absolute;
-      top: 10px;
-      width: 40px;
-      transition: left 0.5s ease;
+
+    #busInfo {
+      margin: 0 20px 10px;
     }
 
     #map {
-      height: 400px;
       width: 100%;
-      margin-top: 20px;
+      height: calc(100vh - 130px);
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-  <h2>🎯 My Bus Tracker</h2>
+  <h2>🚌 My Bus Live Tracker</h2>
 
   <div id="busInfo">
-    <p>🛣️ <strong>Route:</strong> <span id="routeDisplay">---</span></p>
-    <p>🚌 <strong>Bus No:</strong> <span id="busDisplay">---</span></p>
-  </div>
-
-  <div class="road-container" id="roadBar">
-    <span class="start-stop">Start</span>
-    <img src="https://cdn-icons-png.flaticon.com/512/61/61212.png" class="bus-icon" id="busIcon" />
-    <span class="end-stop">End</span>
+    <p><strong>Route:</strong> <span id="routeDisplay">---</span></p>
+    <p><strong>Bus No:</strong> <span id="busDisplay">---</span></p>
   </div>
 
   <div id="map"></div>
 
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    let map, busMarker, alertMarker = null, alertLocation = null;
-    const busIconEl = document.getElementById("busIcon");
+    let map;
+    let busMarker = null;
+    let selectedBus = localStorage.getItem("selectedBus");
+    let selectedRoute = localStorage.getItem("selectedRoute");
 
-    function moveBus(percent) {
-      const roadWidth = document.getElementById("roadBar").offsetWidth - 50;
-      const position = (percent / 100) * roadWidth;
-      busIconEl.style.left = `${position}px`;
-    }
-
-    // Load selected route/bus from localStorage
-    const route = localStorage.getItem("selectedRoute") || "---";
-    const bus = localStorage.getItem("selectedBus") || "---";
-    document.getElementById("routeDisplay").textContent = route;
-    document.getElementById("busDisplay").textContent = bus;
+    document.getElementById("routeDisplay").textContent = selectedRoute || "---";
+    document.getElementById("busDisplay").textContent = selectedBus || "---";
 
     function initMap() {
-      map = L.map('map').setView([12.9716, 77.5946], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      map = L.map('map').setView([12.9716, 77.5946], 14);
 
-      // Show user's location
-      navigator.geolocation.getCurrentPosition(pos => {
-        const userIcon = L.icon({
-          iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-          iconSize: [30, 30],
-          iconAnchor: [15, 30]
-        });
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
-        map.setView([userLat, userLng], 15);
-        L.marker([userLat, userLng], { icon: userIcon }).addTo(map).bindPopup("📍 You are here");
-      });
-
-      // Alert location
-      map.on("click", function (e) {
-        if (alertMarker) map.removeLayer(alertMarker);
-        alertLocation = [e.latlng.lat, e.latlng.lng];
-        alertMarker = L.marker(alertLocation).addTo(map).bindPopup("📍 Alert set here").openPopup();
-        alert("✅ Alert set at:\nLat: " + alertLocation[0].toFixed(5) + "\nLng: " + alertLocation[1].toFixed(5));
-      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © OpenStreetMap contributors'
+      }).addTo(map);
     }
 
-    function fetchBusLocation() {
-      if (bus === "---") return;
+    function updateBusLocation() {
+      if (!selectedBus) return;
 
-      fetch(`/get_bus_location/${bus}`)
+      fetch(`/get_bus_location/${selectedBus}`)
         .then(res => res.json())
         .then(data => {
-          const lat = data.latitude;
-          const lng = data.longitude;
+          const { latitude, longitude } = data;
 
-          if (!lat || !lng) return;
+          const lat = parseFloat(latitude);
+          const lng = parseFloat(longitude);
 
-          // Show or move marker
-          if (!busMarker) {
-            const icon = L.icon({
+          if (busMarker) {
+            busMarker.setLatLng([lat, lng]);
+          } else {
+            const busIcon = L.icon({
               iconUrl: "https://maps.google.com/mapfiles/kml/shapes/bus.png",
               iconSize: [32, 32],
               iconAnchor: [16, 32]
             });
-            busMarker = L.marker([lat, lng], { icon }).addTo(map).bindPopup("🚌 Bus Location").openPopup();
-          } else {
-            busMarker.setLatLng([lat, lng]);
-          }
 
-          // Move cartoon bus (simulation: use lat/lng difference to estimate position)
-          moveBus((lat % 1) * 100); // simple fake percentage
+            busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map).bindPopup("🚌 Bus Location");
+            map.setView([lat, lng], 15);
+          }
+        })
+        .catch(() => {
+          console.log("No location yet for bus.");
         });
     }
 
     window.onload = () => {
       initMap();
-      fetchBusLocation();
-      setInterval(fetchBusLocation, 5000); // update every 5 seconds
+      updateBusLocation();
+      setInterval(updateBusLocation, 5000); // update every 5 sec
     };
   </script>
 </body>
