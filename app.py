@@ -149,6 +149,9 @@ bus_locations = {}  # keep this at the top globally
 
 import json
 
+# ✅ Store location in memory
+bus_locations = {}
+
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.get_json()
@@ -159,21 +162,21 @@ def update_location():
     if not all([bus_no, latitude, longitude]):
         return jsonify({"status": "error", "message": "Missing data"}), 400
 
-    # Store in file
-    with open(f"{bus_no}.json", "w") as f:
-        json.dump({"latitude": latitude, "longitude": longitude}, f)
+    # ✅ Save location in memory
+    bus_locations[bus_no] = {
+        "latitude": float(latitude),
+        "longitude": float(longitude)
+    }
 
-    return jsonify({"status": "success", "message": "Location saved!"})
-
-
+    print(f"📡 Received Location for {bus_no}: ({latitude}, {longitude})")
+    return jsonify({"status": "success"})
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
-    try:
-        with open(f"{bus_no}.json", "r") as f:
-            return jsonify(json.load(f))
-    except:
-        return jsonify({"message": "No location found"}), 404
+    if bus_no in bus_locations:
+        return jsonify(bus_locations[bus_no])
+    else:
+        return jsonify({"error": "No location found"}), 404
 
 
 
