@@ -2,23 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Bus</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
       padding: 20px;
+      margin: 0;
     }
     h2 {
       margin-bottom: 10px;
     }
     #busInfo {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
-    /* Cartoon-style bus progress bar */
     .road-container {
       position: relative;
       background: #ddd;
@@ -31,12 +30,8 @@
       top: 18px;
       font-weight: bold;
     }
-    .start-stop {
-      left: 10px;
-    }
-    .end-stop {
-      right: 10px;
-    }
+    .start-stop { left: 10px; }
+    .end-stop { right: 10px; }
     .bus-icon {
       position: absolute;
       top: 10px;
@@ -60,27 +55,18 @@
     <p>🚌 <strong>Bus No:</strong> <span id="busDisplay">---</span></p>
   </div>
 
-  <!-- 🛣️ Cartoon-style Road with Bus -->
   <div class="road-container" id="roadBar">
     <span class="start-stop">Start</span>
-    <img src="https://th.bing.com/th/id/OIP.hP6LOMlC3Z44yuaULWTI6AHaHa?w=250&h=250&c=8&rs=1&qlt=90&o=6&dpr=1.4&pid=3.1&rm=2" class="bus-icon" id="busIcon" />
-
-
-
-
-
-
-
+    <img src="https://cdn-icons-png.flaticon.com/512/61/61212.png" class="bus-icon" id="busIcon" />
     <span class="end-stop">End</span>
   </div>
 
-  <!-- 🗺️ Map Section -->
   <div id="map"></div>
 
-  <!-- JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    let busIconEl = document.getElementById("busIcon");
+    let map, busMarker, alertMarker = null, alertLocation = null;
+    const busIconEl = document.getElementById("busIcon");
 
     function moveBus(percent) {
       const roadWidth = document.getElementById("roadBar").offsetWidth - 50;
@@ -88,51 +74,30 @@
       busIconEl.style.left = `${position}px`;
     }
 
-    // Simulate bus moving over time (can replace with real API data)
-    let progress = 0;
-    setInterval(() => {
-      if (progress < 100) {
-        progress += 5;
-        moveBus(progress);
-      }
-    }, 1000);
-
-    // Load selected route/bus from storage
-    window.onload = () => {
-      const route = localStorage.getItem("selectedRoute") || "---";
-      const bus = localStorage.getItem("selectedBus") || "---";
-      document.getElementById("routeDisplay").textContent = route;
-      document.getElementById("busDisplay").textContent = bus;
-
-      initMap(); // start map after loading
-    };
-
-    // Leaflet map & alert marker
-    let map, alertMarker = null, alertLocation = null;
+    // Load selected route/bus from localStorage
+    const route = localStorage.getItem("selectedRoute") || "---";
+    const bus = localStorage.getItem("selectedBus") || "---";
+    document.getElementById("routeDisplay").textContent = route;
+    document.getElementById("busDisplay").textContent = bus;
 
     function initMap() {
-      map = L.map('map').setView([12.9716, 77.5946], 13); // default to Bangalore
+      map = L.map('map').setView([12.9716, 77.5946], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data © OpenStreetMap contributors',
-      }).addTo(map);
-
-      // Show current user location
+      // Show user's location
       navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        map.setView([lat, lng], 15);
-
         const userIcon = L.icon({
           iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
           iconSize: [30, 30],
           iconAnchor: [15, 30]
         });
-
-        L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup("📍 You are here");
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+        map.setView([userLat, userLng], 15);
+        L.marker([userLat, userLng], { icon: userIcon }).addTo(map).bindPopup("📍 You are here");
       });
 
-      // Click to set alert
+      // Alert location
       map.on("click", function (e) {
         if (alertMarker) map.removeLayer(alertMarker);
         alertLocation = [e.latlng.lat, e.latlng.lng];
@@ -140,6 +105,40 @@
         alert("✅ Alert set at:\nLat: " + alertLocation[0].toFixed(5) + "\nLng: " + alertLocation[1].toFixed(5));
       });
     }
+
+    function fetchBusLocation() {
+      if (bus === "---") return;
+
+      fetch(`/get_bus_location/${bus}`)
+        .then(res => res.json())
+        .then(data => {
+          const lat = data.latitude;
+          const lng = data.longitude;
+
+          if (!lat || !lng) return;
+
+          // Show or move marker
+          if (!busMarker) {
+            const icon = L.icon({
+              iconUrl: "https://maps.google.com/mapfiles/kml/shapes/bus.png",
+              iconSize: [32, 32],
+              iconAnchor: [16, 32]
+            });
+            busMarker = L.marker([lat, lng], { icon }).addTo(map).bindPopup("🚌 Bus Location").openPopup();
+          } else {
+            busMarker.setLatLng([lat, lng]);
+          }
+
+          // Move cartoon bus (simulation: use lat/lng difference to estimate position)
+          moveBus((lat % 1) * 100); // simple fake percentage
+        });
+    }
+
+    window.onload = () => {
+      initMap();
+      fetchBusLocation();
+      setInterval(fetchBusLocation, 5000); // update every 5 seconds
+    };
   </script>
 </body>
 </html>
