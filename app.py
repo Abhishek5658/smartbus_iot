@@ -144,33 +144,35 @@ def routes_buses_page():
 def my_bus_page():
     return render_template('my_bus.html')
 
-
-from flask import request
-
-# ✅ API to receive GPS data and update bus location in memory
+# 🗺 Store GPS locations per bus number
 bus_locations = {}
 
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.get_json()
-    bus_no = data.get('bus_no')
-    lat = data.get('latitude')
-    lng = data.get('longitude')
+    bus_no = data.get("bus_no")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
 
-    if not bus_no or not lat or not lng:
-        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+    if not all([bus_no, latitude, longitude]):
+        return jsonify({"status": "error", "message": "Missing data"}), 400
 
-    bus_locations[bus_no] = {'latitude': lat, 'longitude': lng}
-    print(f"📍 Updated location for Bus {bus_no}: {lat}, {lng}")
-    return jsonify({'status': 'success'})
+    # Save latest location
+    bus_locations[bus_no] = {
+        "latitude": latitude,
+        "longitude": longitude
+    }
 
-# ✅ API to get location of selected bus
-@app.route('/get_bus_location/<bus_no>')
+    print(f"📡 Bus {bus_no} updated: ({latitude}, {longitude})")
+    return jsonify({"status": "success", "message": "Location saved!"})
+
+
+@app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
-    location = bus_locations.get(bus_no)
-    if location:
-        return jsonify(location)
-    return jsonify({'latitude': None, 'longitude': None})
+    if bus_no in bus_locations:
+        return jsonify(bus_locations[bus_no])
+    else:
+        return jsonify({"message": "No location found"}), 404
 
 
 
