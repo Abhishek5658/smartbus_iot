@@ -13,10 +13,12 @@ def init_db():
 
     # Table for routes
     c.execute('''
-        CREATE TABLE IF NOT EXISTS routes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            route_no TEXT NOT NULL,
-            path TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS gps_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bus_no TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
