@@ -145,7 +145,7 @@ def my_bus_page():
     return render_template('my_bus.html')
 
 # 🗺 Store GPS locations per bus number
-bus_locations = {}
+bus_locations = {}  # keep this at the top globally
 
 @app.route('/update_location', methods=['POST'])
 def update_location():
@@ -157,15 +157,10 @@ def update_location():
     if not all([bus_no, latitude, longitude]):
         return jsonify({"status": "error", "message": "Missing data"}), 400
 
-    # Save latest location
-    bus_locations[bus_no] = {
-        "latitude": latitude,
-        "longitude": longitude
-    }
-
+    bus_locations[bus_no] = {"latitude": latitude, "longitude": longitude}
     print(f"📡 Bus {bus_no} updated: ({latitude}, {longitude})")
+    
     return jsonify({"status": "success", "message": "Location saved!"})
-
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
@@ -173,6 +168,7 @@ def get_bus_location(bus_no):
         return jsonify(bus_locations[bus_no])
     else:
         return jsonify({"message": "No location found"}), 404
+
 
 
 
