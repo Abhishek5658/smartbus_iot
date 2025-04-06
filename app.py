@@ -157,17 +157,31 @@ def update_location():
     if not all([bus_no, latitude, longitude]):
         return jsonify({"status": "error", "message": "Missing data"}), 400
 
+    # Save in memory
     bus_locations[bus_no] = {"latitude": latitude, "longitude": longitude}
-    print(f"📡 Bus {bus_no} updated: ({latitude}, {longitude})")
     
+    # Also write to file
+    with open(f"{bus_no}.txt", "w") as f:
+        f.write(f"{latitude},{longitude}")
+
+    print(f"📡 Bus {bus_no} updated: ({latitude}, {longitude})")
     return jsonify({"status": "success", "message": "Location saved!"})
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
+    # Check in memory first
     if bus_no in bus_locations:
         return jsonify(bus_locations[bus_no])
-    else:
+
+    # Fallback to file
+    try:
+        with open(f"{bus_no}.txt", "r") as f:
+            lat, lon = f.read().strip().split(",")
+            return jsonify({"latitude": lat, "longitude": lon})
+    except:
         return jsonify({"message": "No location found"}), 404
+
+
 
 
 
