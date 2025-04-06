@@ -147,6 +147,8 @@ def my_bus_page():
 # 🗺 Store GPS locations per bus number
 bus_locations = {}  # keep this at the top globally
 
+import json
+
 @app.route('/update_location', methods=['POST'])
 def update_location():
     data = request.get_json()
@@ -159,27 +161,29 @@ def update_location():
 
     # Save in memory
     bus_locations[bus_no] = {"latitude": latitude, "longitude": longitude}
-    
-    # Also write to file
-    with open(f"{bus_no}.txt", "w") as f:
-        f.write(f"{latitude},{longitude}")
 
-    print(f"📡 Bus {bus_no} updated: ({latitude}, {longitude})")
+    # Save to file
+    with open(f"{bus_no}.json", "w") as f:
+        json.dump(bus_locations[bus_no], f)
+
+    print(f"📍 Bus {bus_no} updated: ({latitude}, {longitude})")
     return jsonify({"status": "success", "message": "Location saved!"})
+
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
 def get_bus_location(bus_no):
-    # Check in memory first
+    # Try memory first
     if bus_no in bus_locations:
         return jsonify(bus_locations[bus_no])
 
-    # Fallback to file
+    # Try file if server restarted
     try:
-        with open(f"{bus_no}.txt", "r") as f:
-            lat, lon = f.read().strip().split(",")
-            return jsonify({"latitude": lat, "longitude": lon})
+        with open(f"{bus_no}.json", "r") as f:
+            data = json.load(f)
+            return jsonify(data)
     except:
         return jsonify({"message": "No location found"}), 404
+
 
 
 
