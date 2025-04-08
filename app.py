@@ -151,12 +151,17 @@ bus_locations = {}  # keep this at the top globally
 
 import json
 
-@app.route('/update_location', methods=['POST'])
+@app.route('/update_location', methods=['GET', 'POST'])
 def update_location():
-    data = request.get_json()
-    bus_no = data.get("bus_no")
-    latitude = data.get("latitude")
-    longitude = data.get("longitude")
+    if request.method == 'POST':
+        data = request.get_json()
+        bus_no = data.get("bus_no")
+        latitude = data.get("latitude")
+        longitude = data.get("longitude")
+    else:
+        bus_no = request.args.get("bus_no")
+        latitude = request.args.get("latitude")
+        longitude = request.args.get("longitude")
 
     if not all([bus_no, latitude, longitude]):
         return jsonify({"status": "error", "message": "Missing data"}), 400
@@ -169,9 +174,10 @@ def update_location():
         conn.commit()
         conn.close()
         print(f"📡 Saved Location for {bus_no}: ({latitude}, {longitude})")
-        return jsonify({"status": "success"})
+        return jsonify({"status": "success"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 @app.route('/get_bus_location/<bus_no>', methods=['GET'])
