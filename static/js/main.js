@@ -96,4 +96,34 @@ window.onload = () => {
   if (document.getElementById("route_no")) populateRouteDropdown();
 };
 
+// 🔁 Periodically fetch and update bus location
+setInterval(() => {
+  const selectedBus = localStorage.getItem("selectedBus");
+
+  if (!selectedBus) return;
+
+  fetch(`/get_bus_location/${selectedBus}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.latitude && data.longitude) {
+        const lat = data.latitude;
+        const lng = data.longitude;
+
+        // ✅ Update marker position
+        busMarker.setLatLng([lat, lng]);
+
+        // ✅ Re-center map to bus location
+        map.setView([lat, lng]);
+
+        console.log(`🚌 ${selectedBus} → ${lat}, ${lng}`);
+      } else {
+        console.warn("⚠️ No location found for", selectedBus);
+      }
+    })
+    .catch(err => {
+      console.error("❌ Error fetching bus location:", err);
+    });
+}, 5000); // 🔁 Every 5 seconds
+
+
 // 🚀 Ready for extension: You can add periodic bus location updates, alert triggering, etc.
