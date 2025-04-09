@@ -1,196 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Bus Tracker</title>
-
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <title>Smart Bus IoT Dashboard</title>
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #eef2f7;
+      color: #333;
       margin: 0;
+      background-image: url('image/bus.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
-    /* Navbar Style */
     .navbar {
-      display: flex;
-      background-color: #333;
+      background-color: #2c3e50;
       overflow: hidden;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
     .navbar a {
-      flex: 1;
       color: white;
-      text-align: center;
       padding: 14px 16px;
       text-decoration: none;
-      cursor: pointer;
+      text-align: center;
+      transition: 0.3s;
     }
 
-    .navbar a:hover {
-      background-color: #575757;
+    .navbar a:hover, .navbar a.active {
+      background-color: #18bc9c;
     }
 
-    .active-tab {
-      background-color: #04AA6D;
-    }
-
-    /* Tab content style */
-    .tab-content {
-      display: none;
+    .content {
+      text-align: center;
       padding: 20px;
+      max-width: 800px;
+      margin: auto;
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      margin-top: 40px;
     }
 
-    #map {
-      height: 500px;
-      width: 100%;
+    .card {
+      padding: 20px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-  <!-- 🔗 Navigation Tabs -->
-  <div class="navbar">
-    <a class="tab-btn active-tab" onclick="showTab('home')">Home</a>
-    <a class="tab-btn" onclick="loadIframe('routes', this)">Routes</a>
-    <a class="tab-btn" onclick="showTab('mybus')">My Bus</a>
-    <a class="tab-btn" onclick="showTab('dept')">Department Use</a>
-  </div>
-
-<!-- 🏠 Home Tab -->
-<div id="home" class="tab-content" style="
-  display: block;
-  background: linear-gradient(to right, #f3f2f7, #dce2f0);
-  height: 100vh;
-  padding: 20px 10px;
-  font-family: 'Segoe UI', sans-serif;
-  color: #2c2c2c;
-  position: relative;
-  box-sizing: border-box;
-">
-
-  <!-- 🔰 Banner (Logo) -->
-  <div style="position: absolute; top: 20px; left: 20px;">
-    <img src="{{ url_for('static', filename='img/banner.jpg') }}" alt="College Logo" style="height: 70px;">
-  </div>
-
-  <!-- 🎓 Institution Header -->
-  <div style="text-align: center; max-width: 900px; margin: 0 auto; margin-top: 20px;">
-    <h2 style="margin: 5px 0; color: #4b0082;">MYSURU ROYAL INSTITUTE OF TECHNOLOGY</h2>
-    <p style="font-size: 14px; margin: 2px 0;">
-      (Affiliated to VTU Belagavi, Approved by AICTE – New Delhi & Govt. of Karnataka)
-    </p>
-    <p style="font-size: 14px; margin-bottom: 10px;">
-      Lakshmipura Road, Palahally Post, SR Patna, Mandya – 571606.
-    </p>
-  </div>
-
-  <!-- 📋 Presentation Info -->
-  <div style="max-width: 850px; background-color: white; padding: 20px; border-radius: 10px; margin: auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
-    <h2 style="text-align: center; color: #2c3e50; margin: 10px 0;">🚍 IoT-Based Smart Public Transport Bus</h2>
-    <h4 style="text-align: center; color: #6a1b9a; margin: 5px 0;">💡 12-hour Hackathon Focused on IoT Solutions</h4>
-    <h4 style="text-align: center; margin: 5px 0;">Theme: <span style="color: #e65100;">Transportation</span></h4>
-
-    <hr style="margin: 15px 0;">
-
-    <h3 style="margin: 10px 0;">👥 Presented By:</h3>
-    <p style="font-weight: 600; margin-bottom: 8px;">4<sup>th</sup> Sem Mechanical Engineers – MRIT</p>
-    <ul style="list-style-type: none; padding: 0; font-size: 15px; margin: 0;">
-      <li>• Abhishek M</li>
-      <li>• Darshan K E</li>
-      <li>• Padmanabharao</li>
-      <li>• Inshara Khanum</li>
-    </ul>
-  </div>
+<div class="navbar">
+  <a href="/" class="active">🏠 Home</a>
+  <a href="/routes_buses">🚌 Routes & Buses</a>
+  <a href="/my_bus">📍 My Bus</a>
+  <a href="/department">🏢 Department</a>
 </div>
 
+<div class="content">
+  <div class="card">
+    <h1>🚍 IoT-Based Smart Public Transport Bus</h1>
+    <h3>Real-time Tracking & Management System</h3>
+    <p><strong>Team:</strong> Mechanical Engineers - MRIT</p>
+  </div>
 
-
-
-<!-- 🚌 Routes & Available Buses Tab -->
-<div id="routes" class="tab-content">
-  <iframe id="routesIframe" src="/routes_buses" width="100%" height="600" frameborder="0"></iframe>
+  <div class="card">
+    <h2>📌 About the Project</h2>
+    <p>This Smart Bus IoT system provides comprehensive real-time tracking, passenger management, driver and conductor reviews, air quality monitoring, and alerts for route obstructions. Navigate through the interactive tabs to access all project features.</p>
+  </div>
 </div>
-
-
-
-  <!-- 🧍 My Bus Tab -->
-<!-- 🎯 My Bus Tab -->
-<div id="mybus" class="tab-content">
-  <iframe src="/my_bus" width="100%" style="height: calc(100vh - 100px);" frameborder="0"></iframe>
-</div>
-
-
-<!-- 🏢 Department Use Tab -->
-<div id="dept" class="tab-content">
-        <iframe src="/department" width="100%" height="600" frameborder="0"></iframe>
-      </div>
-      
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-
-  <!-- Load Home Page JS only (for now) -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-  <!-- Tab Switch Script -->
-  <script>
-    function showTab(tabId) {
-      // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-      // Remove active-tab from all buttons
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-tab'));
-      // Show selected tab
-      document.getElementById(tabId).style.display = 'block';
-      // Highlight selected tab
-      event.target.classList.add('active-tab');
-    }
-  </script>
-
-<script>
-  function loadIframe(tabId, element) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-tab'));
-
-    // Show selected tab
-    document.getElementById(tabId).style.display = 'block';
-    element.classList.add('active-tab');
-
-    // 🔁 Reload iframe if exists
-    const iframe = document.querySelector(`#${tabId} iframe`);
-    if (iframe) {
-      iframe.contentWindow.location.reload();
-    }
-  }
-</script>
-
-<script>
-  // Listen for message from iframe to switch tab
-  window.addEventListener("message", (event) => {
-    if (event.data.action === "switchTab") {
-      localStorage.setItem("selectedRoute", event.data.routeNo);
-      localStorage.setItem("selectedBus", event.data.busNo);
-
-      // Switch tab
-      document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-tab'));
-
-      document.getElementById("mybus").style.display = 'block';
-      const myBusBtn = Array.from(document.querySelectorAll('.tab-btn')).find(el => el.textContent.includes('My Bus'));
-      if (myBusBtn) myBusBtn.classList.add('active-tab');
-
-      const iframe = document.querySelector("#mybus iframe");
-      if (iframe) iframe.contentWindow.location.reload();
-    }
-  });
-</script>
-
-
-
 
 </body>
 </html>
