@@ -1,96 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Bus - Live Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bus Live Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
     body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      background-color: #eef2f7;
     }
-
-    h2 {
-      margin: 20px;
+    .header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 15px;
+      text-align: center;
     }
-
-    #busInfo {
-      margin: 0 20px 10px;
+    .tracker-container {
+      padding: 10px;
     }
-
     #map {
       width: 100%;
-      height: calc(100vh - 130px);
+      height: calc(100vh - 330px);
+      border-radius: 8px;
       margin-top: 10px;
+    }
+    .bus-info, .feature-card {
+      text-align: center;
+      padding: 10px;
+      background-color: white;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .feature-card {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+    }
+    .feature-card div {
+      margin: 5px;
+    }
+    .icon {
+      font-size: 1.2em;
+      margin-right: 5px;
+    }
+    .aqi-scale {
+      height: 20px;
+      width: 100%;
+      background: linear-gradient(to right, green, yellow, red);
+      border-radius: 5px;
+      position: relative;
+      margin-top: 5px;
+    }
+    .aqi-marker {
+      height: 20px;
+      width: 5px;
+      background-color: black;
+      position: absolute;
+      top: 0;
+      border-radius: 2px;
+    }
+    .stars {
+      cursor: pointer;
+      color: #ccc;
+    }
+    .star-selected {
+      color: gold;
     }
   </style>
 </head>
 <body>
-
-  <h2>🚌 My Bus Live Tracker</h2>
-
-  <div id="busInfo">
-    <p><strong>Route:</strong> <span id="routeDisplay">---</span></p>
-    <p><strong>Bus No:</strong> <span id="busDisplay">---</span></p>
+<div class="header">
+  <h2>🚌 My Bus - Live Tracker</h2>
+</div>
+<div class="tracker-container">
+  <div class="bus-info">
+    <strong>Route:</strong> <span id="routeDisplay">---</span><br>
+    <strong>Bus No:</strong> <span id="busDisplay">---</span>
   </div>
-
+  <div class="feature-card">
+    <div><span class="icon">👥</span><strong>Available Seats:</strong> <span id="availableSeats">25</span>/50</div>
+    <div>
+      <span class="icon">🌬️</span><strong>Air Quality (AQI):</strong> <span id="airQuality">45</span>
+      <div class="aqi-scale"><div id="aqiMarker" class="aqi-marker"></div></div>
+      <small id="aqiStatus">Good</small>
+    </div>
+    <div>
+      <span class="icon">🧑‍✈️</span><strong>Driver & Conductor Behavior:</strong>
+      <div id="starRating">
+        <span class="stars" data-value="1">&#9733;</span>
+        <span class="stars" data-value="2">&#9733;</span>
+        <span class="stars" data-value="3">&#9733;</span>
+        <span class="stars" data-value="4">&#9733;</span>
+        <span class="stars" data-value="5">&#9733;</span>
+      </div>
+      <small id="ratingValue">Average ⭐4.5</small>
+    </div>
+  </div>
   <div id="map"></div>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    let map;
-    let busMarker = null;
-    let selectedBus = localStorage.getItem("selectedBus");
-    let selectedRoute = localStorage.getItem("selectedRoute");
-
-    document.getElementById("routeDisplay").textContent = selectedRoute || "---";
-    document.getElementById("busDisplay").textContent = selectedBus || "---";
-
-    function initMap() {
-      map = L.map('map').setView([12.9716, 77.5946], 14);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data © OpenStreetMap contributors'
-      }).addTo(map);
-    }
-
-    function updateBusLocation() {
-      if (!selectedBus) return;
-
-      fetch(`/get_bus_location/${selectedBus}`)
-        .then(res => res.json())
-        .then(data => {
-          const { latitude, longitude } = data;
-
-          const lat = parseFloat(latitude);
-          const lng = parseFloat(longitude);
-
-          if (busMarker) {
-            busMarker.setLatLng([lat, lng]);
-          } else {
-            const busIcon = L.icon({
-              iconUrl: "https://maps.google.com/mapfiles/kml/shapes/bus.png",
-              iconSize: [32, 32],
-              iconAnchor: [16, 32]
-            });
-
-            busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map).bindPopup("🚌 Bus Location");
-            map.setView([lat, lng], 15);
-          }
-        })
-        .catch(() => {
-          console.log("No location yet for bus.");
-        });
-    }
-
-    window.onload = () => {
-      initMap();
-      updateBusLocation();
-      setInterval(updateBusLocation, 5000); // update every 5 sec
-    };
-  </script>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script>
+function sendLiveData() {
+  const busNo = localStorage.getItem("selectedBus");
+  if (!busNo || !busMarker) return;
+  const lat = busMarker.getLatLng().lat;
+  const lng = busMarker.getLatLng().lng;
+  const aqi = parseInt(document.getElementById("airQuality").textContent);
+  const passengers = parseInt(document.getElementById("availableSeats").textContent);
+  fetch("/update_bus_data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bus_no: busNo, latitude: lat, longitude: lng, air_quality: aqi, passenger_count: passengers })
+  });
+}
+let map, busMarker = null;
+function initMap() {
+  map = L.map('map').setView([12.9716, 77.5946], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data © OpenStreetMap contributors'
+  }).addTo(map);
+}
+function updateFeatures() {
+  const busNo = localStorage.getItem("selectedBus");
+  const routeNo = localStorage.getItem("selectedRoute");
+  document.getElementById("busDisplay").textContent = busNo;
+  document.getElementById("routeDisplay").textContent = routeNo;
+  if (!busNo) return;
+  fetch(`/get_bus_location/${busNo}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) return;
+      const lat = parseFloat(data.latitude);
+      const lng = parseFloat(data.longitude);
+      if (busMarker) {
+        busMarker.setLatLng([lat, lng]);
+      } else {
+        busMarker = L.marker([lat, lng], {
+          icon: L.icon({ iconUrl: "https://maps.google.com/mapfiles/kml/shapes/bus.png", iconSize: [32, 32] })
+        }).addTo(map).bindPopup("🚌 Bus Location");
+        map.setView([lat, lng], 15);
+      }
+    });
+  const aqi = parseInt(document.getElementById("airQuality").textContent);
+  document.getElementById("aqiMarker").style.left = `${(aqi / 200) * 100}%`;
+  const status = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : 'Poor';
+  document.getElementById("aqiStatus").textContent = status;
+}
+document.querySelectorAll('.stars').forEach(star => {
+  star.onclick = function() {
+    const rating = this.getAttribute('data-value');
+    document.querySelectorAll('.stars').forEach(s => s.classList.toggle('star-selected', s.getAttribute('data-value') <= rating));
+    document.getElementById('ratingValue').textContent = `Rated: ${rating} ⭐`;
+  };
+});
+window.onload = () => {
+  initMap();
+  updateFeatures();
+  setInterval(() => {
+    updateFeatures();
+    sendLiveData();
+  }, 10000);
+};
+</script>
 </body>
 </html>
