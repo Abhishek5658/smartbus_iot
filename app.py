@@ -166,6 +166,7 @@ def get_bus_location(bus_no):
         return jsonify({'latitude': row[0], 'longitude': row[1]})
     return jsonify({'error': 'No location found'}), 404
 
+
 # ------------------ Init ------------------
 
 if __name__ == '__main__':
