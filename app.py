@@ -178,6 +178,44 @@ def get_bus_location(bus_no):
 
 
 
+@app.route('/get_bus_status/<bus_no>')
+def get_bus_status(bus_no):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        
+        # Get latest location
+        c.execute('''
+            SELECT latitude, longitude 
+            FROM gps_data 
+            WHERE bus_no = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        ''', (bus_no,))
+        gps_row = c.fetchone()
+
+        # Get AQI + passenger count
+        c.execute('SELECT air_quality, passenger_count FROM bus_status WHERE bus_no = ?', (bus_no,))
+        status_row = c.fetchone()
+
+        conn.close()
+
+        if gps_row and status_row:
+            return jsonify({
+                'bus_no': bus_no,
+                'latitude': gps_row[0],
+                'longitude': gps_row[1],
+                'air_quality': status_row[0],
+                'passenger_count': status_row[1]
+            })
+        else:
+            return jsonify({'error': 'No data found for this bus'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+
 # ------------------ Init ------------------
 
 if __name__ == '__main__':
