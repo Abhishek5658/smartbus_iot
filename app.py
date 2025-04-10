@@ -110,36 +110,27 @@ def delete_bus(bus_id):
     return jsonify({'message': 'Bus deleted'})
 
 # ------------------ GPS & Live Data ------------------
-
 @app.route('/update_bus_data', methods=['GET', 'POST'])
 def update_bus_data():
     if request.method == 'GET':
         bus_no = request.args.get('bus_no')
-        latitude = request.args.get('latitude')
-        longitude = request.args.get('longitude')
-        air_quality = request.args.get('air_quality')
-        passenger_count = request.args.get('passenger_count')
+        latitude = float(request.args.get('latitude', 0))
+        longitude = float(request.args.get('longitude', 0))
+        air_quality = int(request.args.get('air_quality', 0))
+        passenger_count = int(request.args.get('passenger_count', 0))
     else:
         data = request.get_json()
         bus_no = data.get('bus_no')
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        air_quality = data.get('air_quality')
-        passenger_count = data.get('passenger_count')
+        latitude = float(data.get('latitude', 0))
+        longitude = float(data.get('longitude', 0))
+        air_quality = int(data.get('air_quality', 0))
+        passenger_count = int(data.get('passenger_count', 0))
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
     c.execute('INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)',
               (bus_no, latitude, longitude))
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS bus_status (
-            bus_no TEXT PRIMARY KEY,
-            air_quality INTEGER,
-            passenger_count INTEGER
-        )
-    ''')
 
     c.execute('''
         INSERT INTO bus_status (bus_no, air_quality, passenger_count)
@@ -153,7 +144,6 @@ def update_bus_data():
     conn.close()
 
     return jsonify({'status': 'updated'})
-
 
 @app.route('/get_bus_location/<bus_no>')
 def get_bus_location(bus_no):
