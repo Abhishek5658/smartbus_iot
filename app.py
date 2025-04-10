@@ -213,6 +213,10 @@ def get_bus_status(bus_no):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/init')
+def manual_init():
+    init_db()
+    return "✅ Database initialized"
 
 
 
