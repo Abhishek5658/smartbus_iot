@@ -157,14 +157,25 @@ def update_bus_data():
 
 @app.route('/get_bus_location/<bus_no>')
 def get_bus_location(bus_no):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('SELECT latitude, longitude FROM gps_data WHERE bus_no = ? ORDER BY timestamp DESC LIMIT 1', (bus_no,))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return jsonify({'latitude': row[0], 'longitude': row[1]})
-    return jsonify({'error': 'No location found'}), 404
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''
+            SELECT latitude, longitude 
+            FROM gps_data 
+            WHERE bus_no = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        ''', (bus_no,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return jsonify({'latitude': row[0], 'longitude': row[1]})
+        else:
+            return jsonify({'error': 'No GPS data found for this bus'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 # ------------------ Init ------------------
