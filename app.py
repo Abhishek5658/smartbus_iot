@@ -111,19 +111,27 @@ def delete_bus(bus_id):
 
 # ------------------ GPS & Live Data ------------------
 
-@app.route('/update_bus_data', methods=['POST'])
+@app.route('/update_bus_data', methods=['GET', 'POST'])
 def update_bus_data():
-    data = request.get_json()
-    bus_no = data['bus_no']
-    latitude = data['latitude']
-    longitude = data['longitude']
-    air_quality = data['air_quality']
-    passenger_count = data['passenger_count']
+    if request.method == 'GET':
+        bus_no = request.args.get('bus_no')
+        latitude = request.args.get('latitude')
+        longitude = request.args.get('longitude')
+        air_quality = request.args.get('air_quality')
+        passenger_count = request.args.get('passenger_count')
+    else:
+        data = request.get_json()
+        bus_no = data.get('bus_no')
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        air_quality = data.get('air_quality')
+        passenger_count = data.get('passenger_count')
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    c.execute('INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)', (bus_no, latitude, longitude))
+    c.execute('INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)',
+              (bus_no, latitude, longitude))
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS bus_status (
@@ -143,7 +151,9 @@ def update_bus_data():
 
     conn.commit()
     conn.close()
+
     return jsonify({'status': 'updated'})
+
 
 @app.route('/get_bus_location/<bus_no>')
 def get_bus_location(bus_no):
