@@ -130,10 +130,14 @@ function updateFeatures() {
   document.getElementById("busDisplay").textContent = busNo;
   document.getElementById("routeDisplay").textContent = routeNo;
   if (!busNo) return;
-  fetch(`/get_bus_location/${busNo}`)
+
+  // ✅ GET everything from one endpoint
+  fetch(`/get_bus_status/${busNo}`)
     .then(res => res.json())
     .then(data => {
       if (data.error) return;
+
+      // 📍 Set GPS Marker
       const lat = parseFloat(data.latitude);
       const lng = parseFloat(data.longitude);
       if (busMarker) {
@@ -144,19 +148,21 @@ function updateFeatures() {
         }).addTo(map).bindPopup("🚌 Bus Location");
         map.setView([lat, lng], 15);
       }
+
+      // 🌬️ AQI and 🧍‍♂️ Passengers
+      document.getElementById("airQuality").textContent = data.air_quality;
+      document.getElementById("availableSeats").textContent = 50 - data.passenger_count;
+
+      document.getElementById("aqiMarker").style.left = `${(data.air_quality / 200) * 100}%`;
+      const status = data.air_quality <= 50 ? 'Good' : data.air_quality <= 100 ? 'Moderate' : 'Poor';
+      document.getElementById("aqiStatus").textContent = status;
     });
-  const aqi = parseInt(document.getElementById("airQuality").textContent);
-  document.getElementById("aqiMarker").style.left = `${(aqi / 200) * 100}%`;
-  const status = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : 'Poor';
-  document.getElementById("aqiStatus").textContent = status;
 }
-document.querySelectorAll('.stars').forEach(star => {
-  star.onclick = function() {
-    const rating = this.getAttribute('data-value');
-    document.querySelectorAll('.stars').forEach(s => s.classList.toggle('star-selected', s.getAttribute('data-value') <= rating));
-    document.getElementById('ratingValue').textContent = `Rated: ${rating} ⭐`;
-  };
-});
+
+  setInterval(() => {
+  updateFeatures();
+}, 10000); // every 10s
+
 window.onload = () => {
   initMap();
   updateFeatures();
