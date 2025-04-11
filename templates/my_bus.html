@@ -125,11 +125,40 @@ function initMap() {
   }).addTo(map);
 }
 function updateFeatures() {
-  const busNo = localStorage.getItem("selectedBus");
-  const routeNo = localStorage.getItem("selectedRoute");
+  const busNo = localStorage.getItem("selectedBus") || "MRIT-ME-2025";
+  const routeNo = localStorage.getItem("selectedRoute") || "Fixed Route";
+  
   document.getElementById("busDisplay").textContent = busNo;
   document.getElementById("routeDisplay").textContent = routeNo;
-  if (!busNo) return;
+
+  // ✅ Fixed manual values
+  const lat = 12.395893;
+  const lng = 76.658332;
+  const aqi = 20;
+  const passengers = 3;
+
+  // Update map marker
+  if (busMarker) {
+    busMarker.setLatLng([lat, lng]);
+  } else {
+    busMarker = L.marker([lat, lng], {
+      icon: L.icon({
+        iconUrl: "https://maps.google.com/mapfiles/kml/shapes/bus.png",
+        iconSize: [32, 32]
+      })
+    }).addTo(map).bindPopup("🚌 Bus Location");
+    map.setView([lat, lng], 15);
+  }
+
+  // Update AQI and passenger UI
+  document.getElementById("availableSeats").textContent = passengers;
+  document.getElementById("airQuality").textContent = aqi;
+  document.getElementById("aqiMarker").style.left = `${(aqi / 200) * 100}%`;
+
+  const status = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : 'Poor';
+  document.getElementById("aqiStatus").textContent = status;
+}
+
 
   // ✅ GET everything from one endpoint
   fetch(`/get_bus_status/${busNo}`)
