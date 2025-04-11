@@ -114,36 +114,41 @@ def delete_bus(bus_id):
 def update_bus_data():
     if request.method == 'GET':
         bus_no = request.args.get('bus_no')
-        latitude = float(request.args.get('latitude', 0))
-        longitude = float(request.args.get('longitude', 0))
-        air_quality = int(request.args.get('air_quality', 0))
-        passenger_count = int(request.args.get('passenger_count', 0))
+        latitude = request.args.get('latitude')
+        longitude = request.args.get('longitude')
+        air_quality = request.args.get('air_quality')
+        passenger_count = request.args.get('passenger_count')
     else:
         data = request.get_json()
         bus_no = data.get('bus_no')
-        latitude = float(data.get('latitude', 0))
-        longitude = float(data.get('longitude', 0))
-        air_quality = int(data.get('air_quality', 0))
-        passenger_count = int(data.get('passenger_count', 0))
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        air_quality = data.get('air_quality')
+        passenger_count = data.get('passenger_count')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    if not all([bus_no, latitude, longitude]):
+        return jsonify({'error': 'Missing data'}), 400
 
-    c.execute('INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)',
-              (bus_no, latitude, longitude))
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
 
-    c.execute('''
-        INSERT INTO bus_status (bus_no, air_quality, passenger_count)
-        VALUES (?, ?, ?)
-        ON CONFLICT(bus_no) DO UPDATE SET
-        air_quality = excluded.air_quality,
-        passenger_count = excluded.passenger_count
-    ''', (bus_no, air_quality, passenger_count))
+        c.execute('INSERT INTO gps_data (bus_no, latitude, longitude) VALUES (?, ?, ?)',
+                  (bus_no, latitude, longitude))
 
-    conn.commit()
-    conn.close()
+        c.execute('''
+            INSERT INTO bus_status (bus_no, air_quality, passenger_count)
+            VALUES (?, ?, ?)
+            ON CONFLICT(bus_no) DO UPDATE SET
+            air_quality = excluded.air_quality,
+            passenger_count = excluded.passenger_count
+        ''', (bus_no, air_quality, passenger_count))
 
-    return jsonify({'status': 'updated'})
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'updated'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/get_bus_location/<bus_no>')
 def get_bus_location(bus_no):
