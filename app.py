@@ -3,7 +3,7 @@ import sqlite3
 import os
 
 app = Flask(__name__)
-DB_FILE = '/data/routes.db'
+DB_FILE = 'routes.db'
 
 
 def init_db():
